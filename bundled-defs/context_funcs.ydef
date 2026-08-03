@@ -220,8 +220,21 @@ func hasPermissions(permission)
 
 	[perm-bits]: https://discord.com/developers/docs/topics/permissions#permissions-bitwise-permission-flags
 
+func hasAnyPermissions(permissions)
+	Reports whether the triggering member has any of the specified [permission bits][perm-bits].
+
+	**Tip:** The `.Permissions` context data field contains all the permission bits by name so that, for instance,
+	`.Permissions.Administrator` is `0x0000000000000008`.
+
+	[perm-bits]: https://discord.com/developers/docs/topics/permissions#permissions-bitwise-permission-flags
+
 func targetHasPermissions(target, permissions)
 	Reports whether the target member has the specified [permission bit][perm-bits].
+
+	[perm-bits]: https://discord.com/developers/docs/topics/permissions#permissions-bitwise-permission-flags
+
+func targetHasAnyPermissions(target, permissions)
+	Reports whether the target member has any of the specified [permission bits][perm-bits].
 
 	[perm-bits]: https://discord.com/developers/docs/topics/permissions#permissions-bitwise-permission-flags
 
@@ -352,6 +365,13 @@ func currentUserAgeMinutes()
 
 func currentUserCreated()
 	Returns the time object corresponding to when the current user was created.
+
+func memberAbove(memberA, memberB)
+	Reports whether member `A` is higher than member `B` in the role hierarchy. Both `A` and `B` must be a member object.
+
+func memberAboveRole(member, role)
+	Reports whether  the specified member is higher than the specified role in the hierarchy.
+	`member` must be a member object, `role` must be a role object.
 
 func onlineCount()
 	Returns the number of online members on the current server, including bots.

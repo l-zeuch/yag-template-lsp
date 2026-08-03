@@ -98,6 +98,7 @@ func updateMessage(newMessage)
 func updateMessageNoEscape(newMessage)
 	Same as `updateMessage`, but does not escape mentions.
 
+== Component creation
 func cbutton(opts...)
 	Creates a [button object][discord-buttons] for use in interactions.
 
@@ -139,6 +140,7 @@ func cmenu(opts...)
 	{{ sendMessage nil (complexMessage "menus" $menu) }}
 	```
 
+== Modal components
 func cmodal(opts...)
 	Creates a [modal object][discord-modals] for use in interactions. This should be considered deprecated.
 	Use `modalBuilder` instead. See `sendModal` for more detail.
@@ -212,6 +214,34 @@ func ctextInput(opts...)
 	}}
 	```
 
+func ccheckbox(opts...)
+	A checkbox component for use in modals. It is an sdict with the following keys:
+	- `custom_id`: a unique identifier for the checkbox.
+	- `default`: optional bool for whether the checkbox is checked by default.
+
+func ccheckboxGroup(opts...)
+	A checkbox group component for use in modals. It is an sdict with the following keys:
+	- `custom_id`: a unique identifier for the checkbox group.
+	- `min_values`: optionally the minimum number of checkboxes that must be checked. Min 0, max 10, defaults to 1. If 0, required must be false.
+	- `max_values`: optionally the maximum number of checkboxes that can be checked. Min 1, max the number of options, defaults to number of options.
+	- `required`: optional bool for whether selecting within the group is required.
+	- `options`: a slice of sdicts with the following keys:
+		- `label`: User-facing label for the checkbox.
+		- `value`: the value that will be sent when the checkbox is checked.
+		- `description`: the optional description for the checkbox. Max 100 characters.
+		- `default`: optional bool for whether the checkbox is checked by default.
+
+func cradioGroup(opts...)
+	A radio group component for use in modals for selecting exactly one option from a defined list.
+	It is an sdict with the following keys:
+	- `custom_id`: a unique identifier for the radio group.
+	- `required`: optional bool for whether selecting an option is required. Defaults to true.
+	- `options`: a slice of sdicts with the following keys:
+		- `label`: User-facing label for the radio option.
+		- `value`: the value that will be sent when the option is selected.
+		- `description`: the optional description for the option. Max 100 characters.
+		- `default`: optional bool for whether the option is selected by default. Only one option can be selected by default.
+
 func deleteInteractionResponse(interactionToken, messageID, delay?)
 	Deletes the specified response or follow-up message.
 
@@ -221,3 +251,23 @@ func deleteInteractionResponse(interactionToken, messageID, delay?)
 
 	If you require a delay of more than 10 seconds, consider using `execCC` for deletion of an ephemeral response, or
 	`deleteMessage` to delete a regular interaction response.
+
+
+== Component Messages
+func sendComponentMessage(channel, componentBuilder)
+	Deprecated: Use sendMessage with a component builder instead.
+
+func sendComponentMessageNoEscape(channel, componentBuilder)
+	Deprecated: Use sendMessageNoEscape with a component builder instead.
+
+func sendComponentMessageNoEscapeRetID(channel, componentBuilder)
+	Deprecated: Use sendMessageNoEscapeRetID with a component builder instead.
+
+func sendComponentMessageRetID(channel, componentBuilder)
+	Deprecated: Use sendMessageRetID with a component builder instead.
+
+func editComponentMessage(channel, messageID, componentBuilder)
+	Deprecated: Use editMessage with a component builder instead.
+
+func editComponentMessageNoEscape(channel, messageID, componentBuilder)
+	Deprecated: Use editMessageNoEscape with a component builder instead.
