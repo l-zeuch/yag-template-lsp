@@ -19,7 +19,11 @@ pub(crate) struct Document {
 }
 
 impl Document {
-    pub(crate) fn new(sess: &Session, uri: Url, src: &str) -> anyhow::Result<Self> {
+    pub(crate) async fn new(sess: &Session, uri: Url, src: &str) -> anyhow::Result<Self> {
+        let envdefs = {
+            let guard = sess.envdefs.read().await;
+            (*guard).clone()
+        };
         let parse = parser::parse(src);
         let root = SyntaxNode::new_root(parse.root.clone()).to::<ast::Root>();
         let document = Self {
@@ -27,7 +31,7 @@ impl Document {
             source: src.to_owned(),
             parse: parse.clone(),
             mapper: Mapper::new(src),
-            analysis: yag_template_analysis::analyze(&sess.envdefs, root),
+            analysis: yag_template_analysis::analyze(&envdefs, root),
         };
         Ok(document)
     }

@@ -15,6 +15,10 @@ pub(crate) async fn complete(sess: &Session, params: CompletionParams) -> anyhow
     let doc = sess.document(&uri)?;
 
     let pos = params.text_document_position.position;
+    let envdefs = {
+        let guard = sess.envdefs.read().await;
+        (*guard).clone()
+    };
     let query = doc.query_at(pos);
     let completions = if query.is_in_var_access() {
         let existing_var = query.var().unwrap();
@@ -22,7 +26,7 @@ pub(crate) async fn complete(sess: &Session, params: CompletionParams) -> anyhow
         Some(CompletionResponse::Array(completions))
     } else if query.is_in_func_call() {
         let existing_ident = query.ident().unwrap();
-        let completions = complete_func(&sess.envdefs, &doc, existing_ident);
+        let completions = complete_func(&envdefs, &doc, existing_ident);
         Some(CompletionResponse::Array(completions))
     } else {
         None

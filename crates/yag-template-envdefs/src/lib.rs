@@ -9,7 +9,7 @@ use unscanny::Scanner;
 
 pub mod bundled_envdefs;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EnvDefs {
     pub funcs: HashMap<String, Func>,
 }
@@ -99,6 +99,15 @@ impl EnvDefSource {
             name: Cow::Owned(name.into()),
             data: Cow::Owned(data.into()),
         }
+    }
+
+    pub fn new_from_file(fname: &str) -> std::io::Result<Self> {
+        let data = std::fs::read_to_string(fname)?;
+
+        Ok(Self {
+            name: Cow::Owned(fname.to_string()),
+            data: Cow::Owned(data),
+        })
     }
 
     pub const fn new_static(name: &'static str, data: &'static str) -> Self {

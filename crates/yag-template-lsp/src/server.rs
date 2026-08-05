@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use serde::Deserialize;
 use tower_lsp::jsonrpc::{self, Result};
 use tower_lsp::lsp_types::{
-    CompletionOptions, CompletionParams, CompletionResponse, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DocumentFormattingParams, FoldingRange, FoldingRangeParams,
+    CompletionOptions, CompletionParams, CompletionResponse, DidChangeConfigurationParams, DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentFormattingParams, FoldingRange, FoldingRangeParams,
     FoldingRangeProviderCapability, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
     HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
     Location, OneOf, ReferenceParams, RenameParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
@@ -13,6 +14,11 @@ use tower_lsp::{Client, LanguageServer, async_trait};
 
 use crate::provider;
 use crate::session::{self, Session};
+
+#[derive(Deserialize, Debug)]
+pub struct Config {
+    extra_funcs: Vec<String>,
+}
 
 pub(super) struct YagTemplateLanguageServer {
     session: Arc<Session>,
@@ -119,5 +125,32 @@ impl LanguageServer for YagTemplateLanguageServer {
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         try_handle!(provider::rename::rename(&self.session, params))
+    }
+
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+        tracing::info!("received workspace/didChangeConfiguration");
+
+        let cfg = match serde_json::from_value::<Config>(params.settings) {
+            Ok(c) => c,
+            Err(err) => {
+                tracing::warn!(error = %err, "invalid settings payload");
+                return;
+            }
+        };
+
+        let mut custom_sources = Vec::new();
+        for path in &cfg.extra_funcs {
+            match yag_template_envdefs::EnvDefSource::new_from_file(path) {
+                Ok(src) => {
+                    tracing::info!(path = %path, "loading custom envdef file");
+                    custom_sources.push(src);
+                }
+                Err(err) => {
+                    tracing::warn!(path = %path, error = %err, "failed to read custom envdef file");
+                }
+            }
+        }
+
+        self.session.merge_custom_funcdefs(custom_sources).await;
     }
 }

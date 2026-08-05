@@ -11,13 +11,14 @@ const INLAY_HINT_PARAM_THRESHOLD: usize = 3;
 pub(crate) async fn inlay_hint(sess: &Session, params: InlayHintParams) -> anyhow::Result<Option<Vec<InlayHint>>> {
     let doc = sess.document(&params.text_document.uri)?;
     let requested_range = doc.mapper.text_range(params.range);
+    let envdefs = sess.envdefs.read().await;
 
     let inlay_hints = doc
         .syntax()
         .descendants()
         .filter_map(ast::FuncCall::cast)
         .filter(|call| requested_range.contains_range(call.text_range()))
-        .filter_map(|call| inlay_hints_for_fn_call(&sess.envdefs, &doc, call))
+        .filter_map(|call| inlay_hints_for_fn_call(&envdefs, &doc, call))
         .flatten()
         .collect();
     Ok(Some(inlay_hints))
