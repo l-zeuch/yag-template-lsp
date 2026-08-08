@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams};
+use tower_lsp_server::ls_types::{DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams};
 
 use crate::provider;
 use crate::session::{Document, Session};

@@ -1,24 +1,18 @@
 use std::sync::Arc;
 
-use serde::Deserialize;
-use tower_lsp::jsonrpc::{self, Result};
-use tower_lsp::lsp_types::{
+use tower_lsp_server::jsonrpc::{self, Result};
+use tower_lsp_server::ls_types::{
     CompletionOptions, CompletionParams, CompletionResponse, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentFormattingParams, FoldingRange, FoldingRangeParams,
     FoldingRangeProviderCapability, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
     HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
-    Location, OneOf, ReferenceParams, RenameParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit, WorkspaceEdit,
+    Location, MessageType, OneOf, ReferenceParams, RenameParams, ServerCapabilities, ServerInfo,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, WorkspaceEdit,
 };
-use tower_lsp::{Client, LanguageServer, async_trait};
+use tower_lsp_server::{Client, LanguageServer};
 
 use crate::provider;
 use crate::session::{self, Session};
-
-#[derive(Deserialize, Debug)]
-pub struct Config {
-    extra_funcs: Vec<String>,
-}
 
 pub(super) struct YagTemplateLanguageServer {
     session: Arc<Session>,
@@ -63,7 +57,6 @@ fn server_capabilities() -> ServerCapabilities {
     }
 }
 
-#[async_trait]
 impl LanguageServer for YagTemplateLanguageServer {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
@@ -72,6 +65,7 @@ impl LanguageServer for YagTemplateLanguageServer {
                 name: "YAGPDB Template Language Server".into(),
                 version: Some(env!("CARGO_PKG_VERSION").into()),
             }),
+            offset_encoding: None,
         })
     }
 
@@ -128,12 +122,13 @@ impl LanguageServer for YagTemplateLanguageServer {
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        tracing::info!("received workspace/didChangeConfiguration");
-
-        let cfg = match serde_json::from_value::<Config>(params.settings) {
+        let cfg = match serde_json::from_value::<provider::config::Config>(params.settings) {
             Ok(c) => c,
             Err(err) => {
-                tracing::warn!(error = %err, "invalid settings payload");
+                self.session
+                    .client
+                    .show_message(MessageType::ERROR, format!("invalid settings payload: {err}"))
+                    .await;
                 return;
             }
         };
@@ -150,7 +145,15 @@ impl LanguageServer for YagTemplateLanguageServer {
                 }
             }
         }
+        let custom = match yag_template_envdefs::parse(&custom_sources) {
+            Ok(v) => v,
+            Err(err) => {
+                tracing::warn!(%err, "failed to parse custom envdefs");
+                return;
+            }
+        };
 
-        self.session.merge_custom_funcdefs(custom_sources).await;
+        let mut envdefs = self.session.envdefs.write().await;
+        envdefs.funcs.extend(custom.funcs);
     }
 }

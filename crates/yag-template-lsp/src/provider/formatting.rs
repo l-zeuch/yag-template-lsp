@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{DocumentFormattingParams, MessageType, TextEdit, Url};
+use tower_lsp_server::ls_types::{DocumentFormattingParams, MessageType, TextEdit, Uri};
 use yag_template_envdefs::EnvDefs;
 use yag_template_format::config::{ConfigError, resolve_options_for_file};
 use yag_template_format::{FormatDiagnosticKind, FormatOptions, format};
@@ -32,10 +32,10 @@ pub(crate) async fn format_document(
     Ok(Some(vec![TextEdit::new(range, text)]))
 }
 
-fn options_for_uri(uri: &Url) -> Result<FormatOptions, ConfigError> {
+fn options_for_uri(uri: &Uri) -> Result<FormatOptions, ConfigError> {
     match uri.to_file_path() {
-        Ok(path) => resolve_options_for_file(&path),
-        Err(()) => Ok(FormatOptions::default()),
+        Some(path) => resolve_options_for_file(&path),
+        None => Ok(FormatOptions::default()),
     }
 }
 
@@ -59,7 +59,7 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    use tower_lsp::lsp_types::Url;
+    use tower_lsp_server::ls_types::Uri;
     use yag_template_envdefs::bundled_envdefs;
 
     use super::{format_with_options, options_for_uri};
@@ -91,7 +91,7 @@ mod tests {
     fn formatting_uses_options_resolved_for_the_document_path() {
         let root = TempDir::new("formatting-options");
         fs::write(root.path().join("yagfmt.toml"), "delimiter_padding = \"none\"\n").unwrap();
-        let uri = Url::from_file_path(root.path().join("template.gotmpl")).unwrap();
+        let uri = Uri::from_file_path(root.path().join("template.gotmpl")).unwrap();
         let options = options_for_uri(&uri).unwrap();
         let envdefs = bundled_envdefs::load().unwrap();
 
@@ -111,7 +111,7 @@ mod tests {
     fn invalid_config_is_reported_for_a_file_uri() {
         let root = TempDir::new("invalid-config");
         fs::write(root.path().join("yagfmt.toml"), "indent = 0\n").unwrap();
-        let uri = Url::from_file_path(root.path().join("template.gotmpl")).unwrap();
+        let uri = Uri::from_file_path(root.path().join("template.gotmpl")).unwrap();
 
         assert!(options_for_uri(&uri).is_err());
     }

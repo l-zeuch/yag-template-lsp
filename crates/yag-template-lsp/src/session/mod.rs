@@ -3,19 +3,19 @@ use std::hash::RandomState;
 use anyhow::Context;
 use dashmap::DashMap;
 use dashmap::mapref::one::Ref;
-use tower_lsp::Client;
-use tower_lsp::lsp_types::Url;
+use tower_lsp_server::Client;
+use tower_lsp_server::ls_types::Uri;
 
 pub(crate) mod document;
 pub(crate) mod sync;
 
 pub(crate) use document::Document;
-use yag_template_envdefs::{EnvDefSource, EnvDefs, bundled_envdefs};
+use yag_template_envdefs::{EnvDefs, bundled_envdefs};
 
 pub(crate) struct Session {
     pub(crate) client: Client,
     pub(crate) envdefs: tokio::sync::RwLock<EnvDefs>,
-    documents: DashMap<Url, Document>,
+    documents: DashMap<Uri, Document>,
 }
 
 impl Session {
@@ -27,30 +27,17 @@ impl Session {
         }
     }
 
-    pub(crate) fn document(&self, uri: &Url) -> anyhow::Result<Ref<'_, Url, Document, RandomState>> {
+    pub(crate) fn document(&self, uri: &Uri) -> anyhow::Result<Ref<'_, Uri, Document, RandomState>> {
         self.documents
             .get(uri)
-            .with_context(|| format!("could not find document {uri}"))
+            .with_context(|| format!("could not find document {uri:?}"))
     }
 
-    pub(crate) fn upsert_document(&self, uri: &Url, document: Document) {
+    pub(crate) fn upsert_document(&self, uri: &Uri, document: Document) {
         self.documents.insert(uri.clone(), document);
     }
 
-    pub(crate) fn remove_document(&self, uri: &Url) {
+    pub(crate) fn remove_document(&self, uri: &Uri) {
         self.documents.remove(uri);
-    }
-
-    pub(crate) async fn merge_custom_funcdefs(&self, custom_sources: Vec<EnvDefSource>) {
-        let custom = match yag_template_envdefs::parse(&custom_sources) {
-            Ok(v) => v,
-            Err(err) => {
-                tracing::warn!(%err, "failed to parse custom envdefs");
-                return;
-            }
-        };
-
-        let mut envdefs = self.envdefs.write().await;
-        envdefs.funcs.extend(custom.funcs);
     }
 }

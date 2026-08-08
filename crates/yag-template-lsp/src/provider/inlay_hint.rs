@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams};
+use tower_lsp_server::ls_types::{InlayHint, InlayHintKind, InlayHintLabel, InlayHintParams};
 use yag_template_envdefs::{EnvDefs, Param};
 use yag_template_syntax::ast;
 use yag_template_syntax::ast::AstNode;

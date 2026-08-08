@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{GotoDefinitionParams, GotoDefinitionResponse};
+use tower_lsp_server::ls_types::{GotoDefinitionParams, GotoDefinitionResponse};
 
 use crate::session::Session;
 

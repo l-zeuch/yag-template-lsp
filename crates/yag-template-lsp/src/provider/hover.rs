@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
+use tower_lsp_server::ls_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 use yag_template_envdefs::EnvDefs;
 use yag_template_syntax::ast;
 use yag_template_syntax::ast::AstToken;

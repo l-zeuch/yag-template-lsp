@@ -2,7 +2,7 @@ use std::{env, io};
 
 use anyhow::Context;
 use server::YagTemplateLanguageServer;
-use tower_lsp::{LspService, Server};
+use tower_lsp_server::{LspService, Server};
 use tracing_subscriber::filter::Targets;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use tracing_subscriber::layer::SubscriberExt;
@@ -37,8 +37,8 @@ fn setup_logging() -> anyhow::Result<()> {
 }
 
 fn get_log_filter() -> anyhow::Result<Targets> {
-    /// Make tower_lsp less noisy, but otherwise show info logs by default.
-    const DEFAULT_LOG_FILTER: &str = "tower_lsp=error,info";
+    /// Make tower_lsp_server less noisy, but otherwise show info logs by default.
+    const DEFAULT_LOG_FILTER: &str = "tower_lsp_server=error,info";
 
     let filter = env::var("YAG_LSP_LOG")
         .ok()
