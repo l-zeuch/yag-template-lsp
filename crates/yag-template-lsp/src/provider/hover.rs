@@ -10,10 +10,7 @@ pub(crate) async fn hover(sess: &Session, params: HoverParams) -> anyhow::Result
     let doc = sess.document(&uri)?;
 
     let pos = params.text_document_position_params.position;
-    let envdefs = {
-        let guard = sess.envdefs.read().await;
-        (*guard).clone()
-    };
+    let envdefs = sess.envdefs.read().await;
     let query = doc.query_at(pos);
     let hover_info = if let Some(var) = query.var() {
         hover_var(&doc, var)

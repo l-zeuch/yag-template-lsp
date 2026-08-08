@@ -20,10 +20,7 @@ pub(crate) struct Document {
 
 impl Document {
     pub(crate) async fn new(sess: &Session, uri: Url, src: &str) -> anyhow::Result<Self> {
-        let envdefs = {
-            let guard = sess.envdefs.read().await;
-            (*guard).clone()
-        };
+        let envdefs = sess.envdefs.read().await;
         let parse = parser::parse(src);
         let root = SyntaxNode::new_root(parse.root.clone()).to::<ast::Root>();
         let document = Self {

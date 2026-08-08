@@ -15,10 +15,7 @@ pub(crate) async fn complete(sess: &Session, params: CompletionParams) -> anyhow
     let doc = sess.document(&uri)?;
 
     let pos = params.text_document_position.position;
-    let envdefs = {
-        let guard = sess.envdefs.read().await;
-        (*guard).clone()
-    };
+    let envdefs = sess.envdefs.read().await;
     let query = doc.query_at(pos);
     let completions = if query.is_in_var_access() {
         let existing_var = query.var().unwrap();
