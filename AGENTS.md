@@ -44,4 +44,4 @@ Pull requests should describe the user-visible effect, mention affected crates o
 
 ## Security & Configuration Tips
 
-Do not commit local VS Code settings, generated `target/`, `dist/`, `out/`, or packaged VSIX files. For LSP debugging, prefer `YAG_LSP_LOG` through `yag-template-lsp.server.extraEnv` rather than hard-coded logging changes.
+Do not commit local VS Code settings, generated `target/`, `dist/`, `out/`, or packaged VSIX files. For LSP debugging, prefer `YAG_LSP_LOG` through `yagTemplate.server.extraEnv` rather than hard-coded logging changes.

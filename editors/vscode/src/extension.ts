@@ -4,9 +4,12 @@ import { LanguageClient, LanguageClientOptions, ServerOptions } from 'vscode-lan
 
 let client: LanguageClient | undefined = undefined;
 
+// Keep in sync with `YAG_LSP_SECTION_NAME` in yag-template-lsp crate.
+const configSection = 'yagTemplate';
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function activate(context: ExtensionContext) {
-	const config = workspace.getConfiguration('yag-template-lsp');
+	const config = workspace.getConfiguration(configSection);
 
 	context.subscriptions.push(commands.registerCommand('yag-template-lsp.restartServer', restartServer));
 	try {
@@ -40,14 +43,15 @@ async function startClient(config: WorkspaceConfiguration) {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ scheme: 'file', language: 'yag' }],
 		initializationOptions: config,
+		synchronize: { configurationSection: configSection },
 	};
 
-	client = new LanguageClient('yag-template-lsp', 'YAGPDB Template Language Server', serverOptions, clientOptions);
+	client = new LanguageClient(configSection, 'YAGPDB Template Language Server', serverOptions, clientOptions);
 	return client.start();
 }
 
 function getLanguageServerBinary(config: WorkspaceConfiguration) {
-	const localServerPath = config.get<string | null>('serverPath');
+	const localServerPath = config.get<string | null>('server.path');
 	return localServerPath || bundledLanguageServer();
 }
 

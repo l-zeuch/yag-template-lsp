@@ -36,3 +36,16 @@ indent = "tabs" # or a positive number of spaces
 continuation_indent = "tabs" # or a positive number of spaces
 delimiter_padding = "spaces" # or "none"
 ```
+
+## Custom function definitions
+
+Definitions for YAGPDB's built-in template functions are bundled with the extension. To recognize additional functions,
+point `yagTemplate.extraEnvdefFiles` at one or more `.ydef` files:
+
+```jsonc
+{
+	"yagTemplate.extraEnvdefFiles": ["./defs/custom.ydef"],
+}
+```
+
+Relative paths are resolved against the workspace root.
