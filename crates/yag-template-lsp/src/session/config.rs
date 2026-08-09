@@ -1,7 +1,8 @@
-use std::{fmt, fs};
+use std::fmt;
 
 use serde::Deserialize;
 use serde_json::Value;
+use tokio::fs;
 use tower_lsp_server::ls_types::{ConfigurationItem, MessageType};
 use yag_template_envdefs::{EnvDefSource, EnvDefs, bundled_envdefs};
 
@@ -53,7 +54,7 @@ impl Session {
     }
 
     async fn try_resolve_envdefs(&self, extra_envdef_files: &[String]) -> Result<EnvDefs, ()> {
-        let extra_envdefs = match load_extra_envdefs(extra_envdef_files) {
+        let extra_envdefs = match load_extra_envdefs(extra_envdef_files).await {
             Ok(extra_envdefs) => extra_envdefs,
             Err(err) => {
                 tracing::error!("failed loading extra envdefs in config: {err}");
@@ -85,13 +86,15 @@ impl fmt::Display for LoadExtraEnvdefsError {
     }
 }
 
-fn load_extra_envdefs(filenames: &[String]) -> Result<EnvDefs, LoadExtraEnvdefsError> {
+async fn load_extra_envdefs(filenames: &[String]) -> Result<EnvDefs, LoadExtraEnvdefsError> {
     let mut srcs = Vec::new();
     for filename in filenames {
-        let contents = fs::read_to_string(filename).map_err(|err| LoadExtraEnvdefsError::BadFileRead {
-            filename: filename.clone(),
-            underlying: err,
-        })?;
+        let contents = fs::read_to_string(filename)
+            .await
+            .map_err(|err| LoadExtraEnvdefsError::BadFileRead {
+                filename: filename.clone(),
+                underlying: err,
+            })?;
         srcs.push(EnvDefSource::new(filename, contents));
     }
     yag_template_envdefs::parse(&srcs).map_err(LoadExtraEnvdefsError::Syntax)
