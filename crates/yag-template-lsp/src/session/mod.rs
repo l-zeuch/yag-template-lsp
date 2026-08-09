@@ -13,8 +13,11 @@ pub(crate) mod sync;
 pub(crate) use document::Document;
 use yag_template_envdefs::{EnvDefs, bundled_envdefs};
 
+use crate::session::config::Config;
+
 pub(crate) struct Session {
     pub(crate) client: Client,
+    pub(crate) config: tokio::sync::RwLock<Config>,
     pub(crate) envdefs: tokio::sync::RwLock<EnvDefs>,
     documents: DashMap<Uri, Document>,
 }
@@ -23,6 +26,7 @@ impl Session {
     pub(crate) fn new(client: Client) -> Self {
         Self {
             client,
+            config: tokio::sync::RwLock::new(Config::default()),
             envdefs: tokio::sync::RwLock::new(bundled_envdefs::load().clone()),
             documents: DashMap::new(),
         }
