@@ -12,33 +12,35 @@ pub(crate) struct Config {
     pub(crate) extra_envdef_files: Vec<String>,
 }
 
-pub(crate) async fn did_change_configuration(sess: &Session) {
-    let response = match sess
-        .client
-        .configuration(vec![ConfigurationItem {
-            scope_uri: None,
-            section: Some(YAG_LSP_SECTION_NAME.into()),
-        }])
-        .await
-    {
-        Ok(response) => response,
-        Err(err) => {
-            tracing::error!("failed to retrieve configuration: {err}");
-            return;
-        }
-    };
+impl Session {
+    pub(crate) async fn reload_config(&self) {
+        let response = match self
+            .client
+            .configuration(vec![ConfigurationItem {
+                scope_uri: None,
+                section: Some(YAG_LSP_SECTION_NAME.into()),
+            }])
+            .await
+        {
+            Ok(response) => response,
+            Err(err) => {
+                tracing::error!("failed to retrieve configuration: {err}");
+                return;
+            }
+        };
 
-    let cfg: Config = response
-        .first()
-        .filter(|value| !value.is_null())
-        .and_then(|value| {
-            serde_json::from_value(value.clone())
-                .map_err(|err| {
-                    tracing::warn!("failed to parse configuration, ignoring: {err}");
-                })
-                .ok()
-        })
-        .unwrap_or_default();
+        let cfg: Config = response
+            .first()
+            .filter(|value| !value.is_null())
+            .and_then(|value| {
+                serde_json::from_value(value.clone())
+                    .map_err(|err| {
+                        tracing::warn!("failed to parse configuration, ignoring: {err}");
+                    })
+                    .ok()
+            })
+            .unwrap_or_default();
 
-    sess.update_envdefs(cfg.extra_envdef_files).await;
+        self.update_envdefs(cfg.extra_envdef_files).await;
+    }
 }
