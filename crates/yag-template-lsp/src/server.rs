@@ -71,7 +71,7 @@ impl LanguageServer for YagTemplateLanguageServer {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        provider::config::did_change_configuration(&self.session).await;
+        session::config::did_change_configuration(&self.session).await;
         tracing::info!("server initialized")
     }
 
@@ -124,6 +124,6 @@ impl LanguageServer for YagTemplateLanguageServer {
     }
 
     async fn did_change_configuration(&self, _params: DidChangeConfigurationParams) {
-        provider::config::did_change_configuration(&self.session).await;
+        session::config::did_change_configuration(&self.session).await;
     }
 }

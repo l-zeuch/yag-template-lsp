@@ -1,5 +1,4 @@
 pub(crate) mod completion;
-pub(crate) mod config;
 pub(crate) mod diagnostics;
 pub(crate) mod folding_range;
 pub(crate) mod formatting;

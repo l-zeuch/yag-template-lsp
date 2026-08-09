@@ -6,6 +6,7 @@ use dashmap::mapref::one::Ref;
 use tower_lsp_server::Client;
 use tower_lsp_server::ls_types::{MessageType, Uri};
 
+pub(crate) mod config;
 pub(crate) mod document;
 pub(crate) mod sync;
 
