@@ -14,6 +14,19 @@ pub struct EnvDefs {
     pub funcs: HashMap<String, Func>,
 }
 
+impl EnvDefs {
+    pub fn new() -> Self {
+        Self { funcs: HashMap::new() }
+    }
+
+    pub fn extend_from_source(&mut self, source: &EnvDefSource) -> Result<(), ParseError> {
+        let mut parsed = EnvDefs::new();
+        process_source(&mut parsed, source)?;
+        self.funcs.extend(parsed.funcs);
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Func {
     pub name: String,
@@ -101,7 +114,7 @@ impl EnvDefSource {
         }
     }
 
-    pub fn new_from_file(fname: &str) -> std::io::Result<Self> {
+    pub fn new_from_file(fname: &String) -> std::io::Result<Self> {
         let data = std::fs::read_to_string(fname)?;
 
         Ok(Self {

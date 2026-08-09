@@ -6,8 +6,8 @@ use tower_lsp_server::ls_types::{
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentFormattingParams, FoldingRange, FoldingRangeParams,
     FoldingRangeProviderCapability, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
     HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
-    Location, MessageType, OneOf, ReferenceParams, RenameParams, ServerCapabilities, ServerInfo,
-    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, WorkspaceEdit,
+    Location, OneOf, ReferenceParams, RenameParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit, WorkspaceEdit,
 };
 use tower_lsp_server::{Client, LanguageServer};
 
@@ -64,12 +64,14 @@ impl LanguageServer for YagTemplateLanguageServer {
             server_info: Some(ServerInfo {
                 name: "YAGPDB Template Language Server".into(),
                 version: Some(env!("CARGO_PKG_VERSION").into()),
+                ..Default::default()
             }),
-            offset_encoding: None,
+            ..Default::default()
         })
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        provider::config::handle_did_change_configuration(&self.session).await;
         tracing::info!("server initialized")
     }
 
@@ -121,39 +123,7 @@ impl LanguageServer for YagTemplateLanguageServer {
         try_handle!(provider::rename::rename(&self.session, params))
     }
 
-    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        let cfg = match serde_json::from_value::<provider::config::Config>(params.settings) {
-            Ok(c) => c,
-            Err(err) => {
-                self.session
-                    .client
-                    .show_message(MessageType::ERROR, format!("invalid settings payload: {err}"))
-                    .await;
-                return;
-            }
-        };
-
-        let mut custom_sources = Vec::new();
-        for path in &cfg.extra_funcs {
-            match yag_template_envdefs::EnvDefSource::new_from_file(path) {
-                Ok(src) => {
-                    tracing::info!(path = %path, "loading custom envdef file");
-                    custom_sources.push(src);
-                }
-                Err(err) => {
-                    tracing::warn!(path = %path, error = %err, "failed to read custom envdef file");
-                }
-            }
-        }
-        let custom = match yag_template_envdefs::parse(&custom_sources) {
-            Ok(v) => v,
-            Err(err) => {
-                tracing::warn!(%err, "failed to parse custom envdefs");
-                return;
-            }
-        };
-
-        let mut envdefs = self.session.envdefs.write().await;
-        envdefs.funcs.extend(custom.funcs);
+    async fn did_change_configuration(&self, _params: DidChangeConfigurationParams) {
+        provider::config::handle_did_change_configuration(&self.session).await;
     }
 }
