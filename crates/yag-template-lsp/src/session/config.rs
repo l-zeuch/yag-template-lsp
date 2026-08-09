@@ -1,6 +1,7 @@
 use std::{fmt, fs};
 
 use serde::Deserialize;
+use serde_json::Value;
 use tower_lsp_server::ls_types::{ConfigurationItem, MessageType};
 use yag_template_envdefs::{EnvDefSource, EnvDefs, bundled_envdefs};
 
@@ -27,22 +28,23 @@ impl Session {
         {
             Ok(response) => response,
             Err(err) => {
-                tracing::error!("failed to retrieve configuration: {err}");
+                tracing::error!("workspace/configuration request failed: {err}");
                 return;
             }
         };
 
-        let config: Config = response
-            .first()
-            .filter(|value| !value.is_null())
-            .and_then(|value| {
-                serde_json::from_value(value.clone())
-                    .map_err(|err| {
-                        tracing::warn!("failed to parse configuration, ignoring: {err}");
-                    })
-                    .ok()
-            })
-            .unwrap_or_default();
+        // The client sends null (or nothing at all) if the section is unset.
+        let raw_config = response.into_iter().next().unwrap_or(Value::Null);
+        let config: Config = match serde_json::from_value::<Option<Config>>(raw_config) {
+            Ok(config) => config.unwrap_or_default(),
+            Err(err) => {
+                tracing::error!("Failed parsing configuration: {err}");
+                self.client
+                    .show_message(MessageType::ERROR, "Invalid configuration")
+                    .await;
+                return;
+            }
+        };
 
         let Ok(new_envdefs) = self.try_resolve_envdefs(&config.extra_envdef_files).await else {
             return;
