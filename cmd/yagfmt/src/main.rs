@@ -68,7 +68,7 @@ fn run(args: Args) -> i32 {
         eprintln!("--write requires one or more explicit file paths; stdin is never written");
         return 2;
     }
-    let envdefs = bundled_envdefs::load().expect("bundled envdefs should be valid");
+    let envdefs = bundled_envdefs::load().clone();
 
     if args.files.is_empty() {
         let mut source = String::new();

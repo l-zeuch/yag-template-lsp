@@ -9,9 +9,17 @@ use unscanny::Scanner;
 
 pub mod bundled_envdefs;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EnvDefs {
     pub funcs: HashMap<String, Func>,
+}
+
+impl EnvDefs {
+    /// Merge the definitions from `other` in-place.
+    /// Definitions from `other` take priority in case of a conflict.
+    pub fn merge(&mut self, other: EnvDefs) {
+        self.funcs.extend(other.funcs)
+    }
 }
 
 #[derive(Debug, Clone)]

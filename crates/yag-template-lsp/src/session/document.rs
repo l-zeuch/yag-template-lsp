@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use rowan::{TextRange, TextSize};
-use tower_lsp::lsp_types::{Location, Position, Range, Url};
+use tower_lsp_server::ls_types::{Location, Position, Range, Uri};
 use yag_template_analysis::Analysis;
 use yag_template_syntax::ast::ext::SyntaxNodeExt;
 use yag_template_syntax::parser::Parse;
@@ -11,7 +11,7 @@ use yag_template_syntax::{SyntaxNode, ast, parser};
 use super::Session;
 
 pub(crate) struct Document {
-    pub(crate) uri: Url,
+    pub(crate) uri: Uri,
     pub(crate) source: String,
     pub(crate) parse: Parse,
     pub(crate) mapper: Mapper,
@@ -19,7 +19,8 @@ pub(crate) struct Document {
 }
 
 impl Document {
-    pub(crate) fn new(sess: &Session, uri: Url, src: &str) -> anyhow::Result<Self> {
+    pub(crate) async fn new(sess: &Session, uri: Uri, src: &str) -> anyhow::Result<Self> {
+        let envdefs = sess.envdefs.read().await;
         let parse = parser::parse(src);
         let root = SyntaxNode::new_root(parse.root.clone()).to::<ast::Root>();
         let document = Self {
@@ -27,7 +28,7 @@ impl Document {
             source: src.to_owned(),
             parse: parse.clone(),
             mapper: Mapper::new(src),
-            analysis: yag_template_analysis::analyze(&sess.envdefs, root),
+            analysis: yag_template_analysis::analyze(&envdefs, root),
         };
         Ok(document)
     }

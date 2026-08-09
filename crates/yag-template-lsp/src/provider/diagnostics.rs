@@ -1,10 +1,10 @@
-use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Url};
+use tower_lsp_server::ls_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Uri};
 use yag_template_analysis::{AnalysisError, AnalysisWarning};
 use yag_template_syntax::SyntaxError;
 
 use crate::session::{Document, Session};
 
-pub(crate) async fn publish(sess: &Session, uri: &Url) -> anyhow::Result<()> {
+pub(crate) async fn publish(sess: &Session, uri: &Uri) -> anyhow::Result<()> {
     let doc = sess.document(uri)?;
 
     let syntax_error_diags = doc.parse.errors.iter().map(|err| diag_for_syntax_error(&doc, err));
@@ -46,7 +46,7 @@ fn diag_for_analysis_warning(doc: &Document, warning: &AnalysisWarning) -> Diagn
     )
 }
 
-pub(crate) async fn clear(sess: &Session, uri: &Url) {
+pub(crate) async fn clear(sess: &Session, uri: &Uri) {
     let version = Default::default();
     sess.client
         .publish_diagnostics(uri.clone(), Vec::new(), Some(version))

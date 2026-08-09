@@ -42,10 +42,10 @@ fn default_options_come_from_the_formatter() {
     let output = child.wait_with_output().unwrap();
 
     assert!(output.status.success());
-    let envdefs = bundled_envdefs::load().unwrap();
+    let envdefs = bundled_envdefs::load();
     assert_eq!(
         output.stdout,
-        format(source, &envdefs, &FormatOptions::default()).text.as_bytes()
+        format(source, envdefs, &FormatOptions::default()).text.as_bytes()
     );
 }
 

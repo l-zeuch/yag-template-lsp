@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use tower_lsp::jsonrpc::{self, Result};
-use tower_lsp::lsp_types::{
-    CompletionOptions, CompletionParams, CompletionResponse, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DocumentFormattingParams, FoldingRange, FoldingRangeParams,
+use tower_lsp_server::jsonrpc::{self, Result};
+use tower_lsp_server::ls_types::{
+    CompletionOptions, CompletionParams, CompletionResponse, DidChangeConfigurationParams, DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, DocumentFormattingParams, FoldingRange, FoldingRangeParams,
     FoldingRangeProviderCapability, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
     HoverProviderCapability, InitializeParams, InitializeResult, InitializedParams, InlayHint, InlayHintParams,
     Location, OneOf, ReferenceParams, RenameParams, ServerCapabilities, ServerInfo, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, WorkspaceEdit,
 };
-use tower_lsp::{Client, LanguageServer, async_trait};
+use tower_lsp_server::{Client, LanguageServer};
 
 use crate::provider;
 use crate::session::{self, Session};
@@ -57,7 +57,6 @@ fn server_capabilities() -> ServerCapabilities {
     }
 }
 
-#[async_trait]
 impl LanguageServer for YagTemplateLanguageServer {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
@@ -65,12 +64,15 @@ impl LanguageServer for YagTemplateLanguageServer {
             server_info: Some(ServerInfo {
                 name: "YAGPDB Template Language Server".into(),
                 version: Some(env!("CARGO_PKG_VERSION").into()),
+                ..Default::default()
             }),
+            ..Default::default()
         })
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        tracing::info!("server initialized")
+        tracing::info!("server initialized");
+        self.session.reload_config().await;
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -119,5 +121,9 @@ impl LanguageServer for YagTemplateLanguageServer {
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         try_handle!(provider::rename::rename(&self.session, params))
+    }
+
+    async fn did_change_configuration(&self, _params: DidChangeConfigurationParams) {
+        self.session.reload_config().await;
     }
 }

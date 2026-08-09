@@ -106,16 +106,16 @@ mod tests {
             max_width: 8,
             ..FormatOptions::default()
         };
-        let envdefs = bundled_envdefs::load().unwrap();
-        let result = format("A {{.V}}", &envdefs, &options);
+        let envdefs = bundled_envdefs::load();
+        let result = format("A {{.V}}", envdefs, &options);
 
         assert!(result.diagnostics.is_empty());
     }
 
     #[test]
     fn formatting_adds_a_terminal_newline() {
-        let envdefs = bundled_envdefs::load().unwrap();
-        let result = format("{{.Value}}", &envdefs, &FormatOptions::default());
+        let envdefs = bundled_envdefs::load();
+        let result = format("{{.Value}}", envdefs, &FormatOptions::default());
 
         assert_eq!(result.text, "{{ .Value }}\n");
     }

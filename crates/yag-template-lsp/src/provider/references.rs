@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{Location, ReferenceContext, ReferenceParams};
+use tower_lsp_server::ls_types::{Location, ReferenceContext, ReferenceParams};
 use yag_template_syntax::ast::{self, AstNode};
 
 use crate::session::{Document, Session};

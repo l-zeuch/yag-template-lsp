@@ -1,4 +1,4 @@
-use tower_lsp::lsp_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
+use tower_lsp_server::ls_types::{Hover, HoverContents, HoverParams, MarkupContent, MarkupKind};
 use yag_template_envdefs::EnvDefs;
 use yag_template_syntax::ast;
 use yag_template_syntax::ast::AstToken;
@@ -10,12 +10,13 @@ pub(crate) async fn hover(sess: &Session, params: HoverParams) -> anyhow::Result
     let doc = sess.document(&uri)?;
 
     let pos = params.text_document_position_params.position;
+    let envdefs = sess.read_envdefs().await;
     let query = doc.query_at(pos);
     let hover_info = if let Some(var) = query.var() {
         hover_var(&doc, var)
     } else if query.is_in_func_call() {
         let func_ident = query.ident().unwrap();
-        hover_func(&sess.envdefs, &doc, func_ident)
+        hover_func(&envdefs, &doc, func_ident)
     } else {
         None
     };

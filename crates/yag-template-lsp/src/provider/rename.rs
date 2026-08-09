@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tower_lsp::lsp_types::{RenameParams, TextEdit, WorkspaceEdit};
+use tower_lsp_server::ls_types::{RenameParams, TextEdit, WorkspaceEdit};
 use yag_template_syntax::ast;
 
 use crate::session::{Document, Session};
