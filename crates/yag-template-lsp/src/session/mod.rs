@@ -17,8 +17,8 @@ use crate::session::config::Config;
 
 pub(crate) struct Session {
     pub(crate) client: Client,
-    pub(crate) config: tokio::sync::RwLock<Config>,
-    pub(crate) envdefs: tokio::sync::RwLock<EnvDefs>,
+    config: tokio::sync::RwLock<Config>,
+    envdefs: tokio::sync::RwLock<EnvDefs>,
     documents: DashMap<Uri, Document>,
 }
 
@@ -44,5 +44,9 @@ impl Session {
 
     pub(crate) fn remove_document(&self, uri: &Uri) {
         self.documents.remove(uri);
+    }
+
+    pub(crate) async fn read_envdefs(&self) -> tokio::sync::RwLockReadGuard<'_, EnvDefs> {
+        self.envdefs.read().await
     }
 }
