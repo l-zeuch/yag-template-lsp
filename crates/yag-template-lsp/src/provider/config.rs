@@ -9,7 +9,7 @@ pub const YAG_LSP_SECTION_NAME: &str = "yagTemplate";
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default)]
-    pub extra_funcs: Vec<String>,
+    pub extra_envdef_files: Vec<String>,
 }
 
 pub async fn handle_did_change_configuration(sess: &Session) {
@@ -40,5 +40,5 @@ pub async fn handle_did_change_configuration(sess: &Session) {
         })
         .unwrap_or_default();
 
-    sess.update_envdefs(cfg.extra_funcs).await;
+    sess.update_envdefs(cfg.extra_envdef_files).await;
 }
