@@ -1,5 +1,6 @@
 use serde::Deserialize;
-use tower_lsp_server::ls_types::ConfigurationItem;
+use tower_lsp_server::ls_types::{ConfigurationItem, MessageType};
+use yag_template_envdefs::{EnvDefSource, bundled_envdefs};
 
 use crate::session::Session;
 
@@ -42,5 +43,36 @@ impl Session {
             .unwrap_or_default();
 
         self.update_envdefs(cfg.extra_envdef_files).await;
+    }
+
+    async fn update_envdefs(&self, extra_funcs: Vec<String>) {
+        // Obtain a fresh bundle; we may have changed workspaces with different custom envdefs,
+        // so we should discard the old ones.
+        let mut envdefs = bundled_envdefs::load().expect("bundled envdefs should be valid");
+
+        for file in &extra_funcs {
+            let Ok(src) = EnvDefSource::new_from_file(file) else {
+                tracing::warn!(path = %file, "failed to load env def");
+
+                self.client
+                    .show_message(MessageType::WARNING, format!("failed to load env def {file}, ignoring"))
+                    .await;
+
+                continue;
+            };
+
+            if let Err(err) = envdefs.extend_from_source(&src) {
+                tracing::warn!(path = %file, "failed to parse env def: {err}");
+
+                self.client
+                    .show_message(
+                        MessageType::WARNING,
+                        format!("failed to parse env def {file}, ignoring"),
+                    )
+                    .await;
+            }
+        }
+
+        *self.envdefs.write().await = envdefs;
     }
 }
