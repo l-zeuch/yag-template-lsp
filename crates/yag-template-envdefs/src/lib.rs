@@ -114,9 +114,8 @@ impl EnvDefSource {
         }
     }
 
-    pub fn new_from_file(fname: &String) -> std::io::Result<Self> {
+    pub fn new_from_file(fname: &str) -> std::io::Result<Self> {
         let data = std::fs::read_to_string(fname)?;
-
         Ok(Self {
             name: Cow::Owned(fname.to_string()),
             data: Cow::Owned(data),
