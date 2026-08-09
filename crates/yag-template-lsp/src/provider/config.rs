@@ -12,7 +12,7 @@ pub struct Config {
     pub extra_envdef_files: Vec<String>,
 }
 
-pub async fn handle_did_change_configuration(sess: &Session) {
+pub async fn did_change_configuration(sess: &Session) {
     let response = match sess
         .client
         .configuration(vec![ConfigurationItem {
