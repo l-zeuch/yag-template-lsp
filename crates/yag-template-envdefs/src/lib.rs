@@ -15,15 +15,10 @@ pub struct EnvDefs {
 }
 
 impl EnvDefs {
-    pub fn new() -> Self {
-        Self { funcs: HashMap::new() }
-    }
-
-    pub fn extend_from_source(&mut self, source: &EnvDefSource) -> Result<(), ParseError> {
-        let mut parsed = EnvDefs::new();
-        process_source(&mut parsed, source)?;
-        self.funcs.extend(parsed.funcs);
-        Ok(())
+    /// Merge the definitions from `other` in-place.
+    /// Definitions from `other` take priority in case of a conflict.
+    pub fn merge(&mut self, other: EnvDefs) {
+        self.funcs.extend(other.funcs)
     }
 }
 

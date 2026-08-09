@@ -1,6 +1,8 @@
+use std::{fmt, fs};
+
 use serde::Deserialize;
 use tower_lsp_server::ls_types::{ConfigurationItem, MessageType};
-use yag_template_envdefs::{EnvDefSource, bundled_envdefs};
+use yag_template_envdefs::{EnvDefSource, EnvDefs, bundled_envdefs};
 
 use crate::session::Session;
 
@@ -30,7 +32,7 @@ impl Session {
             }
         };
 
-        let cfg: Config = response
+        let config: Config = response
             .first()
             .filter(|value| !value.is_null())
             .and_then(|value| {
@@ -42,34 +44,53 @@ impl Session {
             })
             .unwrap_or_default();
 
-        self.update_envdefs(&cfg.extra_envdef_files).await;
+        let Ok(new_envdefs) = self.try_resolve_envdefs(&config.extra_envdef_files).await else {
+            return;
+        };
+        *self.envdefs.write().await = new_envdefs;
     }
 
-    async fn update_envdefs(&self, extra_funcs: &[String]) {
-        let mut envdefs = bundled_envdefs::load().clone();
-        for file in extra_funcs {
-            let Ok(src) = EnvDefSource::new_from_file(file) else {
-                tracing::warn!(path = %file, "failed to load env def");
-
-                self.client
-                    .show_message(MessageType::WARNING, format!("failed to load env def {file}, ignoring"))
-                    .await;
-
-                continue;
-            };
-
-            if let Err(err) = envdefs.extend_from_source(&src) {
-                tracing::warn!(path = %file, "failed to parse env def: {err}");
-
-                self.client
-                    .show_message(
-                        MessageType::WARNING,
-                        format!("failed to parse env def {file}, ignoring"),
-                    )
-                    .await;
+    async fn try_resolve_envdefs(&self, extra_envdef_files: &[String]) -> Result<EnvDefs, ()> {
+        let extra_envdefs = match load_extra_envdefs(extra_envdef_files) {
+            Ok(extra_envdefs) => extra_envdefs,
+            Err(err) => {
+                tracing::error!("failed loading extra envdefs in config: {err}");
+                self.client.show_message(MessageType::ERROR, err).await;
+                return Err(());
             }
-        }
-
-        *self.envdefs.write().await = envdefs;
+        };
+        let mut new_envdefs = bundled_envdefs::load().clone();
+        new_envdefs.merge(extra_envdefs);
+        Ok(new_envdefs)
     }
+}
+
+#[derive(Debug)]
+enum LoadExtraEnvdefsError {
+    BadFileRead {
+        filename: String,
+        underlying: std::io::Error,
+    },
+    Syntax(yag_template_envdefs::ParseError),
+}
+impl fmt::Display for LoadExtraEnvdefsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use LoadExtraEnvdefsError::*;
+        match self {
+            BadFileRead { filename, underlying } => write!(f, "Failed reading env def file {filename}: {underlying}"),
+            Syntax(err) => write!(f, "Failed parsing env defs: {err}"),
+        }
+    }
+}
+
+fn load_extra_envdefs(filenames: &[String]) -> Result<EnvDefs, LoadExtraEnvdefsError> {
+    let mut srcs = Vec::new();
+    for filename in filenames {
+        let contents = fs::read_to_string(filename).map_err(|err| LoadExtraEnvdefsError::BadFileRead {
+            filename: filename.clone(),
+            underlying: err,
+        })?;
+        srcs.push(EnvDefSource::new(filename, contents));
+    }
+    yag_template_envdefs::parse(&srcs).map_err(LoadExtraEnvdefsError::Syntax)
 }
