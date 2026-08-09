@@ -109,14 +109,6 @@ impl EnvDefSource {
         }
     }
 
-    pub fn new_from_file(fname: &str) -> std::io::Result<Self> {
-        let data = std::fs::read_to_string(fname)?;
-        Ok(Self {
-            name: Cow::Owned(fname.to_string()),
-            data: Cow::Owned(data),
-        })
-    }
-
     pub const fn new_static(name: &'static str, data: &'static str) -> Self {
         Self {
             name: Cow::Borrowed(name),
