@@ -46,10 +46,7 @@ impl Session {
     }
 
     async fn update_envdefs(&self, extra_funcs: &[String]) {
-        // Obtain a fresh bundle; we may have changed workspaces with different custom envdefs,
-        // so we should discard the old ones.
-        let mut envdefs = bundled_envdefs::load().expect("bundled envdefs should be valid");
-
+        let mut envdefs = bundled_envdefs::load().clone();
         for file in extra_funcs {
             let Ok(src) = EnvDefSource::new_from_file(file) else {
                 tracing::warn!(path = %file, "failed to load env def");

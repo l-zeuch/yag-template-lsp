@@ -93,18 +93,18 @@ mod tests {
         fs::write(root.path().join("yagfmt.toml"), "delimiter_padding = \"none\"\n").unwrap();
         let uri = Uri::from_file_path(root.path().join("template.gotmpl")).unwrap();
         let options = options_for_uri(&uri).unwrap();
-        let envdefs = bundled_envdefs::load().unwrap();
+        let envdefs = bundled_envdefs::load();
 
         assert_eq!(
-            format_with_options("{{ .Name }}", &envdefs, &options),
+            format_with_options("{{ .Name }}", envdefs, &options),
             Some("{{.Name}}\n".to_owned())
         );
     }
 
     #[test]
     fn invalid_templates_do_not_produce_edits() {
-        let envdefs = bundled_envdefs::load().unwrap();
-        assert_eq!(format_with_options("{{ if", &envdefs, &Default::default()), None);
+        let envdefs = bundled_envdefs::load();
+        assert_eq!(format_with_options("{{ if", envdefs, &Default::default()), None);
     }
 
     #[test]

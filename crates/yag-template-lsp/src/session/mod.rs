@@ -23,7 +23,7 @@ impl Session {
     pub(crate) fn new(client: Client) -> Self {
         Self {
             client,
-            envdefs: tokio::sync::RwLock::new(bundled_envdefs::load().expect("bundled envdefs should be valid")),
+            envdefs: tokio::sync::RwLock::new(bundled_envdefs::load().clone()),
             documents: DashMap::new(),
         }
     }
