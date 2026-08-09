@@ -3,16 +3,16 @@ use tower_lsp_server::ls_types::ConfigurationItem;
 
 use crate::session::Session;
 
-pub const YAG_LSP_SECTION_NAME: &str = "yagTemplate";
+pub(crate) const YAG_LSP_SECTION_NAME: &str = "yagTemplate";
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Config {
+pub(crate) struct Config {
     #[serde(default)]
-    pub extra_envdef_files: Vec<String>,
+    pub(crate) extra_envdef_files: Vec<String>,
 }
 
-pub async fn did_change_configuration(sess: &Session) {
+pub(crate) async fn did_change_configuration(sess: &Session) {
     let response = match sess
         .client
         .configuration(vec![ConfigurationItem {
