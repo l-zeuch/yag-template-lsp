@@ -51,6 +51,7 @@ impl Session {
             return;
         };
         *self.envdefs.write().await = new_envdefs;
+        self.reanalyze_documents().await;
     }
 
     async fn try_resolve_envdefs(&self, extra_envdef_files: &[String]) -> Result<EnvDefs, ()> {

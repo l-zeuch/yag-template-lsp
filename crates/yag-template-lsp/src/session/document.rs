@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use rowan::{TextRange, TextSize};
 use tower_lsp_server::ls_types::{Location, Position, Range, Uri};
 use yag_template_analysis::Analysis;
+use yag_template_envdefs::EnvDefs;
 use yag_template_syntax::ast::ext::SyntaxNodeExt;
 use yag_template_syntax::parser::Parse;
 use yag_template_syntax::query::Query;
@@ -31,6 +32,11 @@ impl Document {
             analysis: yag_template_analysis::analyze(&envdefs, root),
         };
         Ok(document)
+    }
+
+    pub(crate) fn reanalyze_with(&mut self, envdefs: &EnvDefs) {
+        let root = SyntaxNode::new_root(self.parse.root.clone()).to::<ast::Root>();
+        self.analysis = yag_template_analysis::analyze(&envdefs, root);
     }
 
     pub(crate) fn syntax(&self) -> SyntaxNode {

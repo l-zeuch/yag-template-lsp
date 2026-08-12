@@ -13,6 +13,8 @@ pub(crate) mod sync;
 pub(crate) use document::Document;
 use yag_template_envdefs::{EnvDefs, bundled_envdefs};
 
+use crate::provider;
+
 pub(crate) struct Session {
     pub(crate) client: Client,
     envdefs: tokio::sync::RwLock<EnvDefs>,
@@ -25,6 +27,16 @@ impl Session {
             client,
             envdefs: tokio::sync::RwLock::new(bundled_envdefs::load().clone()),
             documents: DashMap::new(),
+        }
+    }
+
+    pub(crate) async fn reanalyze_documents(&self) {
+        let envdefs = self.envdefs.read().await;
+        for mut doc in self.documents.iter_mut() {
+            doc.reanalyze_with(&envdefs);
+            if let Err(err) = provider::diagnostics::publish(self, &doc.uri).await {
+                tracing::error!("failed to publish diagnostics for {:?}: {err}", doc.uri);
+            }
         }
     }
 
