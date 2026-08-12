@@ -4,8 +4,6 @@
 
 This is a Rust workspace with a VS Code extension wrapper. Core crates live under `crates/`: `yag-template-syntax` parses templates, `yag-template-analysis` performs semantic checks, `yag-template-envdefs` embeds definitions, `yag-template-format` formats templates, and `yag-template-lsp` implements the language server. Utility binaries live under `cmd/`, including the `yagfmt` formatter CLI and `exportdefs`. Bundled `.ydef` data is in `bundled-defs/`. VS Code extension sources, grammars, and packaging metadata are in `editors/vscode/`. Demo media is in `assets/`.
 
-More specific `AGENTS.md` files override these guidelines within their directory trees. In particular, read `crates/yag-template-format/AGENTS.md` before changing formatter behavior.
-
 ## Build, Test, and Development Commands
 
 - `cargo build --workspace`: build all Rust crates and binaries.
@@ -26,7 +24,7 @@ Rust uses edition 2024 and `rustfmt.toml` with module-level import grouping and 
 
 ## Testing Guidelines
 
-Place Rust unit tests next to the code they exercise with `#[cfg(test)]` modules or focused `#[test]` functions. Prefer parser, analysis, envdef, and formatter regression tests for language behavior changes. Formatter behavior changes require focused `.in`/`.out` snapshot fixtures as described in `crates/yag-template-format/AGENTS.md`. Run `cargo test --workspace` before submitting Rust changes. Extension tests are not prominent; at minimum run `npm run compile` to validate TypeScript, linting, and bundling.
+Place Rust unit tests next to the code they exercise with `#[cfg(test)]` modules or focused `#[test]` functions. Prefer parser, analysis, envdef, and formatter regression tests for language behavior changes. Formatter behavior changes require focused `.in`/`.out` snapshot fixtures as described in `crates/yag-template-format/CLAUDE.md`. Run `cargo test --workspace` before submitting Rust changes. Extension tests are not prominent; at minimum run `npm run compile` to validate TypeScript, linting, and bundling.
 
 ## Verification
 
