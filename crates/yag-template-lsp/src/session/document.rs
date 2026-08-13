@@ -17,26 +17,30 @@ pub(crate) struct Document {
 }
 
 impl Document {
-    pub(crate) async fn new(sess: &Session, uri: Uri, src: &str) -> anyhow::Result<Self> {
-        let envdefs = sess.envdefs.read().await;
+    pub(crate) fn new(sess: &Session, uri: Uri, src: &str) -> Self {
+        let envdefs = sess.read_envdefs();
         let parse = parser::parse(src);
         let root = SyntaxNode::new_root(parse.root.clone()).to::<ast::Root>();
-        let document = Self {
+        Self {
             uri,
             parse,
             mapper: Mapper::new(src),
             analysis: yag_template_analysis::analyze(&envdefs, root),
-        };
-        Ok(document)
+        }
     }
 
     pub(crate) fn source(&self) -> &str {
         &self.mapper.text
     }
 
-    pub(crate) fn reanalyze_with(&mut self, envdefs: &EnvDefs) {
+    pub(crate) fn reanalyze_with(&self, envdefs: &EnvDefs) -> Self {
         let root = SyntaxNode::new_root(self.parse.root.clone()).to::<ast::Root>();
-        self.analysis = yag_template_analysis::analyze(envdefs, root);
+        Self {
+            uri: self.uri.clone(),
+            parse: self.parse.clone(),
+            mapper: self.mapper.clone(),
+            analysis: yag_template_analysis::analyze(envdefs, root),
+        }
     }
 
     pub(crate) fn syntax(&self) -> SyntaxNode {
@@ -53,6 +57,7 @@ impl Document {
 }
 
 /// A mapper that translates between byte offsets and 0-based line:UTF-16-character positions.
+#[derive(Clone)]
 pub(crate) struct Mapper {
     text: String,
     line_starts: Vec<TextSize>, // 0, plus byte offsets immediately preceding newlines
@@ -114,7 +119,6 @@ impl Mapper {
     }
 }
 
-/// The length of `text` in UTF-16 code units.
 fn utf16_len(text: &str) -> u32 {
     if text.is_ascii() {
         text.len() as u32

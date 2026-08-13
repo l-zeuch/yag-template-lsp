@@ -1,8 +1,7 @@
-use std::hash::RandomState;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use anyhow::Context;
-use dashmap::DashMap;
-use dashmap::mapref::one::Ref;
 use tower_lsp_server::Client;
 use tower_lsp_server::ls_types::Uri;
 
@@ -15,46 +14,60 @@ use yag_template_envdefs::{EnvDefs, bundled_envdefs};
 
 use crate::provider;
 
+type DocumentStore = HashMap<Uri, Arc<Document>>;
+
 pub(crate) struct Session {
     pub(crate) client: Client,
-    envdefs: tokio::sync::RwLock<EnvDefs>,
-    documents: DashMap<Uri, Document>,
+    envdefs: RwLock<EnvDefs>,
+    documents: RwLock<DocumentStore>,
 }
 
 impl Session {
     pub(crate) fn new(client: Client) -> Self {
         Self {
             client,
-            envdefs: tokio::sync::RwLock::new(bundled_envdefs::load().clone()),
-            documents: DashMap::new(),
+            envdefs: RwLock::new(bundled_envdefs::load().clone()),
+            documents: RwLock::new(DocumentStore::new()),
         }
     }
 
     pub(crate) async fn reanalyze_documents(&self) {
-        let envdefs = self.envdefs.read().await;
-        for mut doc in self.documents.iter_mut() {
-            doc.reanalyze_with(&envdefs);
-            if let Err(err) = provider::diagnostics::publish(self, &doc.uri).await {
-                tracing::error!("failed to publish diagnostics for {:?}: {err}", doc.uri);
+        {
+            let envdefs = self.read_envdefs();
+            for (_, doc) in self.documents.write().unwrap().iter_mut() {
+                *doc = Arc::new(doc.reanalyze_with(&envdefs))
             }
+        }
+
+        let new_documents: Vec<_> = self.documents.read().unwrap().values().map(Arc::clone).collect();
+        for doc in new_documents {
+            provider::diagnostics::publish(self, &doc).await;
         }
     }
 
-    pub(crate) fn document(&self, uri: &Uri) -> anyhow::Result<Ref<'_, Uri, Document, RandomState>> {
+    pub(crate) fn document(&self, uri: &Uri) -> anyhow::Result<Arc<Document>> {
         self.documents
+            .read()
+            .unwrap()
             .get(uri)
+            .cloned()
             .with_context(|| format!("could not find document {uri:?}"))
     }
 
-    pub(crate) fn upsert_document(&self, uri: &Uri, document: Document) {
-        self.documents.insert(uri.clone(), document);
+    pub(crate) fn upsert_document(&self, document: Document) -> Arc<Document> {
+        let document = Arc::new(document);
+        self.documents
+            .write()
+            .unwrap()
+            .insert(document.uri.clone(), Arc::clone(&document));
+        document
     }
 
     pub(crate) fn remove_document(&self, uri: &Uri) {
-        self.documents.remove(uri);
+        self.documents.write().unwrap().remove(uri);
     }
 
-    pub(crate) async fn read_envdefs(&self) -> tokio::sync::RwLockReadGuard<'_, EnvDefs> {
-        self.envdefs.read().await
+    pub(crate) fn read_envdefs(&self) -> RwLockReadGuard<'_, EnvDefs> {
+        self.envdefs.read().unwrap()
     }
 }

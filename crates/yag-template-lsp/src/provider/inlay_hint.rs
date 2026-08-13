@@ -11,7 +11,7 @@ const INLAY_HINT_PARAM_THRESHOLD: usize = 3;
 pub(crate) async fn inlay_hint(sess: &Session, params: InlayHintParams) -> anyhow::Result<Option<Vec<InlayHint>>> {
     let doc = sess.document(&params.text_document.uri)?;
     let requested_range = doc.mapper.text_range(params.range);
-    let envdefs = sess.read_envdefs().await;
+    let envdefs = sess.read_envdefs();
 
     let inlay_hints = doc
         .syntax()

@@ -4,16 +4,14 @@ use yag_template_syntax::SyntaxError;
 
 use crate::session::{Document, Session};
 
-pub(crate) async fn publish(sess: &Session, uri: &Uri) -> anyhow::Result<()> {
-    let doc = sess.document(uri)?;
-
-    let syntax_error_diags = doc.parse.errors.iter().map(|err| diag_for_syntax_error(&doc, err));
-    let analysis_error_diags = doc.analysis.errors.iter().map(|err| diag_for_analysis_error(&doc, err));
+pub(crate) async fn publish(sess: &Session, doc: &Document) {
+    let syntax_error_diags = doc.parse.errors.iter().map(|err| diag_for_syntax_error(doc, err));
+    let analysis_error_diags = doc.analysis.errors.iter().map(|err| diag_for_analysis_error(doc, err));
     let analysis_warning_diags = doc
         .analysis
         .warnings
         .iter()
-        .map(|warning| diag_for_analysis_warning(&doc, warning));
+        .map(|warning| diag_for_analysis_warning(doc, warning));
     let all_diags = syntax_error_diags
         .chain(analysis_error_diags)
         .chain(analysis_warning_diags)
@@ -21,9 +19,8 @@ pub(crate) async fn publish(sess: &Session, uri: &Uri) -> anyhow::Result<()> {
 
     let version = Default::default();
     sess.client
-        .publish_diagnostics(uri.clone(), all_diags, Some(version))
+        .publish_diagnostics(doc.uri.clone(), all_diags, Some(version))
         .await;
-    Ok(())
 }
 
 fn diag_for_syntax_error(doc: &Document, err: &SyntaxError) -> Diagnostic {

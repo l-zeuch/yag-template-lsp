@@ -23,7 +23,7 @@ pub(crate) async fn format_document(
         }
     };
     let doc = sess.document(&uri)?;
-    let envdefs = sess.read_envdefs().await;
+    let envdefs = sess.read_envdefs();
     let Some(text) = format_with_options(doc.source(), &envdefs, &options) else {
         return Ok(None);
     };

@@ -80,11 +80,11 @@ impl LanguageServer for YagTemplateLanguageServer {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        session::sync::on_document_open(&self.session, params).await.unwrap();
+        session::sync::on_document_open(&self.session, params).await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        session::sync::on_document_change(&self.session, params).await.unwrap();
+        session::sync::on_document_change(&self.session, params).await;
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {

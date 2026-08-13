@@ -50,7 +50,7 @@ impl Session {
         let Ok(new_envdefs) = self.try_resolve_envdefs(&config.extra_envdef_files).await else {
             return;
         };
-        *self.envdefs.write().await = new_envdefs;
+        *self.envdefs.write().unwrap() = new_envdefs;
         self.reanalyze_documents().await;
     }
 
