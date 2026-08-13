@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use rowan::{TextRange, TextSize};
 use tower_lsp_server::ls_types::{Location, Position, Range, Uri};
 use yag_template_analysis::Analysis;
@@ -13,7 +11,6 @@ use super::Session;
 
 pub(crate) struct Document {
     pub(crate) uri: Uri,
-    pub(crate) source: String,
     pub(crate) parse: Parse,
     pub(crate) mapper: Mapper,
     pub(crate) analysis: Analysis,
@@ -26,17 +23,20 @@ impl Document {
         let root = SyntaxNode::new_root(parse.root.clone()).to::<ast::Root>();
         let document = Self {
             uri,
-            source: src.to_owned(),
-            parse: parse.clone(),
+            parse,
             mapper: Mapper::new(src),
             analysis: yag_template_analysis::analyze(&envdefs, root),
         };
         Ok(document)
     }
 
+    pub(crate) fn source(&self) -> &str {
+        &self.mapper.text
+    }
+
     pub(crate) fn reanalyze_with(&mut self, envdefs: &EnvDefs) {
         let root = SyntaxNode::new_root(self.parse.root.clone()).to::<ast::Root>();
-        self.analysis = yag_template_analysis::analyze(&envdefs, root);
+        self.analysis = yag_template_analysis::analyze(envdefs, root);
     }
 
     pub(crate) fn syntax(&self) -> SyntaxNode {
@@ -52,65 +52,41 @@ impl Document {
     }
 }
 
-/// A mapper that translates offset:length bytes to 0-based line:row characters.
-/// Modified from the `lsp-async-stub` crate (MIT license, Ferenc Tamás).
+/// A mapper that translates between byte offsets and 0-based line:UTF-16-character positions.
 pub(crate) struct Mapper {
-    byte_offset_to_pos: BTreeMap<TextSize, Position>,
-    pos_to_byte_offset: BTreeMap<Position, TextSize>,
+    text: String,
+    line_starts: Vec<TextSize>, // 0, plus byte offsets immediately preceding newlines
 }
 
 impl Mapper {
-    pub(crate) fn new(src: &str) -> Self {
-        let mut byte_offset_to_pos = BTreeMap::new();
-        let mut pos_to_byte_offset = BTreeMap::new();
-
-        let mut line = 0u32;
-        let mut character = 0u32; // UTF-16 line length
-
-        let mut cur_utf8_offset = 0u32;
-        for c in src.chars() {
-            let len_utf8 = c.len_utf8() as u32;
-            byte_offset_to_pos.extend(
-                (cur_utf8_offset..cur_utf8_offset + len_utf8)
-                    .map(|b| (TextSize::from(b), Position { line, character })),
-            );
-            pos_to_byte_offset.insert(Position { line, character }, TextSize::from(cur_utf8_offset));
-
-            cur_utf8_offset += len_utf8;
-            character += c.len_utf16() as u32;
-            if c == '\n' {
-                // LF is at the start of each line.
-                line += 1;
-                character = 0;
-            }
-        }
-
-        // Imaginary EOF character.
-        byte_offset_to_pos.insert(TextSize::from(cur_utf8_offset), Position { line, character });
-        pos_to_byte_offset.insert(Position { line, character }, TextSize::from(cur_utf8_offset));
-
+    pub(crate) fn new(text: &str) -> Self {
+        let mut line_starts = vec![TextSize::from(0)];
+        line_starts.extend(
+            text.match_indices('\n')
+                .map(|(lf_offset, _)| TextSize::from(lf_offset as u32 + 1)),
+        );
         Self {
-            byte_offset_to_pos,
-            pos_to_byte_offset,
+            text: text.to_owned(),
+            line_starts,
         }
     }
 
     pub(crate) fn offset(&self, position: Position) -> TextSize {
-        self.pos_to_byte_offset
-            .get(&position)
-            .copied()
-            .expect("position should be valid")
+        let Some(&line_start) = self.line_starts.get(position.line as usize) else {
+            return TextSize::from(self.text.len() as u32);
+        };
+        line_start + TextSize::from(utf16_col_to_byte(self.line_text(position.line), position.character))
     }
 
     pub(crate) fn text_range(&self, range: Range) -> TextRange {
         TextRange::new(self.offset(range.start), self.offset(range.end))
     }
 
+    /// Panics if `offset` is past the end of the text or falls inside a character.
     pub(crate) fn position(&self, offset: TextSize) -> Position {
-        self.byte_offset_to_pos
-            .get(&offset)
-            .copied()
-            .expect("offset should be valid")
+        let (line, line_start) = self.line_at(offset);
+        let character = utf16_len(&self.text[usize::from(line_start)..usize::from(offset)]);
+        Position { line, character }
     }
 
     pub(crate) fn range(&self, range: TextRange) -> Range {
@@ -119,4 +95,47 @@ impl Mapper {
             end: self.position(range.end()),
         }
     }
+
+    /// The line that `offset` falls on, along with that line's start offset.
+    fn line_at(&self, offset: TextSize) -> (u32, TextSize) {
+        let line = self.line_starts.partition_point(|&line_start| line_start <= offset) - 1;
+        (line as u32, self.line_starts[line])
+    }
+
+    /// The text of `line`, excluding its trailing line feed. A carriage return in a
+    /// CRLF sequence is retained, since it occupies a character position of its own.
+    fn line_text(&self, line: u32) -> &str {
+        let start = usize::from(self.line_starts[line as usize]);
+        let end = match self.line_starts.get(line as usize + 1) {
+            Some(&next_line_start) => usize::from(next_line_start) - 1,
+            None => self.text.len(),
+        };
+        &self.text[start..end]
+    }
+}
+
+/// The length of `text` in UTF-16 code units.
+fn utf16_len(text: &str) -> u32 {
+    if text.is_ascii() {
+        text.len() as u32
+    } else {
+        text.chars().map(|c| c.len_utf16() as u32).sum()
+    }
+}
+
+/// The byte offset within `line` of the given 0-based UTF-16 character offset,
+/// clamped to the length of the line.
+fn utf16_col_to_byte(line: &str, character: u32) -> u32 {
+    if line.is_ascii() {
+        return character.min(line.len() as u32);
+    }
+
+    let mut utf16_col = 0;
+    for (byte_offset, c) in line.char_indices() {
+        if utf16_col >= character {
+            return byte_offset as u32;
+        }
+        utf16_col += c.len_utf16() as u32;
+    }
+    line.len() as u32
 }
