@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use tower_lsp_server::jsonrpc::{self, Result};
@@ -57,14 +59,27 @@ fn server_capabilities() -> ServerCapabilities {
     }
 }
 
+fn resolve_workspace_root(params: &InitializeParams) -> Option<PathBuf> {
+    let root = params
+        .workspace_folders
+        .as_ref()
+        // if there are multiple workspace folders, assume first is the root
+        .and_then(|folders| folders.first())
+        .and_then(|folder| folder.uri.to_file_path().map(Cow::into_owned));
+    if root.is_none() {
+        tracing::warn!("could not interpret workspace root {root:?} as a file path");
+    }
+    root
+}
+
 impl LanguageServer for YagTemplateLanguageServer {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        self.session.set_workspace_root(resolve_workspace_root(&params));
         Ok(InitializeResult {
             capabilities: server_capabilities(),
             server_info: Some(ServerInfo {
                 name: "YAGPDB Template Language Server".into(),
                 version: Some(env!("CARGO_PKG_VERSION").into()),
-                ..Default::default()
             }),
             ..Default::default()
         })

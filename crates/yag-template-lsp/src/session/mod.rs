@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use anyhow::Context;
@@ -18,6 +19,7 @@ type DocumentStore = HashMap<Uri, Arc<Document>>;
 
 pub(crate) struct Session {
     pub(crate) client: Client,
+    workspace_root: RwLock<Option<PathBuf>>,
     envdefs: RwLock<EnvDefs>,
     documents: RwLock<DocumentStore>,
 }
@@ -26,9 +28,18 @@ impl Session {
     pub(crate) fn new(client: Client) -> Self {
         Self {
             client,
+            workspace_root: RwLock::new(None),
             envdefs: RwLock::new(bundled_envdefs::load().clone()),
             documents: RwLock::new(DocumentStore::new()),
         }
+    }
+
+    pub(crate) fn set_workspace_root(&self, root: Option<PathBuf>) {
+        *self.workspace_root.write().unwrap() = root;
+    }
+
+    pub(crate) fn workspace_root(&self) -> Option<PathBuf> {
+        self.workspace_root.read().unwrap().clone()
     }
 
     pub(crate) async fn reanalyze_documents(&self) {

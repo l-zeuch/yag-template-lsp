@@ -1,4 +1,5 @@
 use std::fmt;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -55,7 +56,8 @@ impl Session {
     }
 
     async fn try_resolve_envdefs(&self, extra_envdef_files: &[String]) -> Result<EnvDefs, ()> {
-        let extra_envdefs = match load_extra_envdefs(extra_envdef_files).await {
+        let paths = resolve_envdef_paths(self.workspace_root().as_deref(), extra_envdef_files);
+        let extra_envdefs = match load_extra_envdefs(&paths).await {
             Ok(extra_envdefs) => extra_envdefs,
             Err(err) => {
                 tracing::error!("failed loading extra envdefs in config: {err}");
@@ -69,34 +71,43 @@ impl Session {
     }
 }
 
+fn resolve_envdef_paths(workspace_root: Option<&Path>, filenames: &[String]) -> Vec<PathBuf> {
+    filenames
+        .iter()
+        .map(|filename| match workspace_root {
+            Some(root) => root.join(filename),
+            None => PathBuf::from(filename),
+        })
+        .collect()
+}
+
 #[derive(Debug)]
 enum LoadExtraEnvdefsError {
-    BadFileRead {
-        filename: String,
-        underlying: std::io::Error,
-    },
+    BadFileRead { path: PathBuf, underlying: std::io::Error },
     Syntax(yag_template_envdefs::ParseError),
 }
 impl fmt::Display for LoadExtraEnvdefsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use LoadExtraEnvdefsError::*;
         match self {
-            BadFileRead { filename, underlying } => write!(f, "Failed reading env def file {filename}: {underlying}"),
+            BadFileRead { path, underlying } => {
+                write!(f, "Failed reading env def file {}: {underlying}", path.display())
+            }
             Syntax(err) => write!(f, "Failed parsing env defs: {err}"),
         }
     }
 }
 
-async fn load_extra_envdefs(filenames: &[String]) -> Result<EnvDefs, LoadExtraEnvdefsError> {
+async fn load_extra_envdefs(paths: &[PathBuf]) -> Result<EnvDefs, LoadExtraEnvdefsError> {
     let mut srcs = Vec::new();
-    for filename in filenames {
-        let contents = fs::read_to_string(filename)
+    for path in paths {
+        let contents = fs::read_to_string(path)
             .await
             .map_err(|err| LoadExtraEnvdefsError::BadFileRead {
-                filename: filename.clone(),
+                path: path.clone(),
                 underlying: err,
             })?;
-        srcs.push(EnvDefSource::new(filename, contents));
+        srcs.push(EnvDefSource::new(path.display().to_string(), contents));
     }
     yag_template_envdefs::parse(&srcs).map_err(LoadExtraEnvdefsError::Syntax)
 }
